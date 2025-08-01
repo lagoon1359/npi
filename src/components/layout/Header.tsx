@@ -40,7 +40,12 @@ import {
   ClipboardCheck,
   TrendingUp,
   Award,
-  ShieldCheck
+  ShieldCheck,
+  Database,
+  UserCheck,
+  FolderOpen,
+  Clipboard,
+  ChevronDown
 } from 'lucide-react'
 import type { UserRole } from '@/lib/supabase'
 
@@ -71,68 +76,162 @@ const roleDisplayNames = {
   student: 'Student',
 }
 
+interface NavItem {
+  href: string
+  label: string
+  icon: any
+  description?: string
+}
+
+interface NavCategory {
+  label: string
+  icon: any
+  items: NavItem[]
+}
+
 export default function Header({ user, onLogout }: HeaderProps) {
   const router = useRouter()
 
-  const getNavigationItems = (role: UserRole) => {
-    const baseItems = [
-      { href: '/dashboard', label: 'Dashboard', icon: BarChart3 }
+  const getNavigationCategories = (role: UserRole): NavCategory[] => {
+    const dashboardItems: NavItem[] = [
+      { href: '/dashboard', label: 'Main Dashboard', icon: BarChart3, description: 'Overview and key metrics' }
     ]
+
+    const registrationItems: NavItem[] = []
+    const academicItems: NavItem[] = []
+    const reportItems: NavItem[] = []
+    const setupItems: NavItem[] = []
 
     switch (role) {
       case 'admin':
-        return [
-          ...baseItems,
-          { href: '/admin-dashboard', label: 'Student Management', icon: Shield },
-          { href: '/student-registration', label: 'New Registration', icon: UserPlus },
-          { href: '/biometric-enrollment', label: 'Biometric Enrollment', icon: User },
-          { href: '/transcript-generator', label: 'Generate Transcripts', icon: FileText },
-          { href: '/assessments', label: 'Assessment Management', icon: ClipboardCheck },
-          { href: '/grade-moderation', label: 'Grade Moderation', icon: ShieldCheck },
-          { href: '/assessment-analytics', label: 'Assessment Analytics', icon: TrendingUp },
-          { href: '/departments', label: 'Departments', icon: Building },
-          { href: '/programs', label: 'Programs', icon: BookOpen },
-          { href: '/users', label: 'Users', icon: Users },
-          { href: '/academic-years', label: 'Academic Years', icon: Calendar },
-          { href: '/reports', label: 'Reports', icon: FileText },
-          { href: '/settings', label: 'Settings', icon: Settings },
-        ]
+        // Dashboard System
+        dashboardItems.push(
+          { href: '/admin-dashboard', label: 'Admin Dashboard', icon: Shield, description: 'Administrative overview' },
+          { href: '/assessment-analytics', label: 'Assessment Analytics', icon: TrendingUp, description: 'Performance insights' }
+        )
+
+        // Student Registration System
+        registrationItems.push(
+          { href: '/student-registration', label: 'New Registration', icon: UserPlus, description: 'Register new students' },
+          { href: '/biometric-enrollment', label: 'Biometric Enrollment', icon: UserCheck, description: 'Biometric data capture' }
+        )
+
+        // Academic Management System
+        academicItems.push(
+          { href: '/assessments', label: 'Assessment Management', icon: ClipboardCheck, description: 'Manage assessments' },
+          { href: '/grade-moderation', label: 'Grade Moderation', icon: ShieldCheck, description: 'Review and approve grades' },
+          { href: '/departments', label: 'Departments', icon: Building, description: 'Manage departments' },
+          { href: '/programs', label: 'Programs', icon: BookOpen, description: 'Academic programs' },
+          { href: '/courses', label: 'Courses', icon: FolderOpen, description: 'Course management' },
+          { href: '/academic-years', label: 'Academic Years', icon: Calendar, description: 'Academic calendar' },
+          { href: '/grading-deadlines', label: 'Grading Deadlines', icon: Clipboard, description: 'Deadline management' }
+        )
+
+        // Reports
+        reportItems.push(
+          { href: '/reports', label: 'System Reports', icon: FileText, description: 'Administrative reports' },
+          { href: '/transcript-generator', label: 'Generate Transcripts', icon: Award, description: 'Student transcripts' },
+          { href: '/system-logs', label: 'System Logs', icon: Database, description: 'System activity logs' }
+        )
+
+        // Setup
+        setupItems.push(
+          { href: '/users', label: 'User Management', icon: Users, description: 'Manage system users' },
+          { href: '/settings', label: 'System Settings', icon: Settings, description: 'System configuration' }
+        )
+        break
 
       case 'department_head':
-        return [
-          ...baseItems,
-          { href: '/courses', label: 'Courses', icon: BookOpen },
-          { href: '/instructors', label: 'Instructors', icon: Users },
-          { href: '/assessments', label: 'Assessment Management', icon: ClipboardCheck },
-          { href: '/grade-moderation', label: 'Grade Moderation', icon: ShieldCheck },
-          { href: '/assessment-analytics', label: 'Assessment Analytics', icon: TrendingUp },
-          { href: '/reports', label: 'Reports', icon: FileText },
-        ]
+        // Dashboard System
+        dashboardItems.push(
+          { href: '/assessment-analytics', label: 'Assessment Analytics', icon: TrendingUp, description: 'Department performance' }
+        )
+
+        // Academic Management System
+        academicItems.push(
+          { href: '/courses', label: 'Department Courses', icon: BookOpen, description: 'Manage department courses' },
+          { href: '/assessments', label: 'Assessment Management', icon: ClipboardCheck, description: 'Oversee assessments' },
+          { href: '/grade-moderation', label: 'Grade Moderation', icon: ShieldCheck, description: 'Review grades' },
+          { href: '/users', label: 'Department Staff', icon: Users, description: 'Manage instructors' }
+        )
+
+        // Reports
+        reportItems.push(
+          { href: '/reports', label: 'Department Reports', icon: FileText, description: 'Department analytics' }
+        )
+        break
 
       case 'instructor':
       case 'tutor':
-        return [
-          ...baseItems,
-          { href: '/my-courses', label: 'My Courses', icon: BookOpen },
-          { href: '/assessments', label: 'Assessment Management', icon: ClipboardCheck },
-          { href: '/students', label: 'Students', icon: Users },
-          { href: '/grading', label: 'Grading', icon: FileText },
-        ]
+        // Academic Management System
+        academicItems.push(
+          { href: '/courses', label: 'My Courses', icon: BookOpen, description: 'Courses you teach' },
+          { href: '/assessments', label: 'Assessment Management', icon: ClipboardCheck, description: 'Create and manage assessments' },
+          { href: '/users', label: 'My Students', icon: Users, description: 'View your students' }
+        )
+        break
 
       case 'student':
-        return [
-          ...baseItems,
-          { href: '/student-registration', label: 'Registration', icon: UserPlus },
-          { href: '/biometric-enrollment', label: 'Biometric Enrollment', icon: User },
-          { href: '/transcript-generator', label: 'My Transcript', icon: GraduationCap },
-          { href: '/courses', label: 'My Courses', icon: BookOpen },
-          { href: '/student-grades', label: 'My Grades', icon: Award },
-          { href: '/results', label: 'Results', icon: FileText },
-        ]
+        // Student Registration System
+        registrationItems.push(
+          { href: '/student-registration', label: 'Registration Portal', icon: UserPlus, description: 'Course registration' },
+          { href: '/biometric-enrollment', label: 'Biometric Enrollment', icon: UserCheck, description: 'Update biometric data' }
+        )
 
-      default:
-        return baseItems
+        // Academic Management System
+        academicItems.push(
+          { href: '/courses', label: 'My Courses', icon: BookOpen, description: 'Enrolled courses' },
+          { href: '/student-grades', label: 'My Grades', icon: Award, description: 'View your grades' }
+        )
+
+        // Reports
+        reportItems.push(
+          { href: '/transcript-generator', label: 'My Transcript', icon: GraduationCap, description: 'Download transcripts' }
+        )
+        break
     }
+
+    const categories: NavCategory[] = [
+      {
+        label: 'Dashboard',
+        icon: BarChart3,
+        items: dashboardItems
+      }
+    ]
+
+    if (registrationItems.length > 0) {
+      categories.push({
+        label: 'Registration',
+        icon: UserPlus,
+        items: registrationItems
+      })
+    }
+
+    if (academicItems.length > 0) {
+      categories.push({
+        label: 'Academic',
+        icon: BookOpen,
+        items: academicItems
+      })
+    }
+
+    if (reportItems.length > 0) {
+      categories.push({
+        label: 'Reports',
+        icon: FileText,
+        items: reportItems
+      })
+    }
+
+    if (setupItems.length > 0) {
+      categories.push({
+        label: 'Setup',
+        icon: Settings,
+        items: setupItems
+      })
+    }
+
+    return categories
   }
 
   const handleLogout = () => {
@@ -171,7 +270,7 @@ export default function Header({ user, onLogout }: HeaderProps) {
     )
   }
 
-  const navigationItems = getNavigationItems(user.role)
+  const navigationCategories = getNavigationCategories(user.role)
 
   return (
     <header className="border-b bg-white">
@@ -187,20 +286,62 @@ export default function Header({ user, onLogout }: HeaderProps) {
             </Link>
           </div>
 
-          <nav className="hidden md:flex items-center space-x-6">
-            {navigationItems.map((item) => {
-              const Icon = item.icon
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="flex items-center space-x-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{item.label}</span>
-                </Link>
-              )
-            })}
+          <nav className="hidden md:flex items-center space-x-1">
+            <NavigationMenu>
+              <NavigationMenuList>
+                {navigationCategories.map((category) => {
+                  const CategoryIcon = category.icon
+
+                  // If only one item, make it a direct link
+                  if (category.items.length === 1) {
+                    const item = category.items[0]
+                    const ItemIcon = item.icon
+                    return (
+                      <NavigationMenuItem key={category.label}>
+                        <Link href={item.href} legacyBehavior passHref>
+                          <NavigationMenuLink className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors">
+                            <ItemIcon className="h-4 w-4" />
+                            <span>{category.label}</span>
+                          </NavigationMenuLink>
+                        </Link>
+                      </NavigationMenuItem>
+                    )
+                  }
+
+                  // Multiple items - create dropdown
+                  return (
+                    <NavigationMenuItem key={category.label}>
+                      <NavigationMenuTrigger className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+                        <CategoryIcon className="h-4 w-4" />
+                        <span>{category.label}</span>
+                      </NavigationMenuTrigger>
+                      <NavigationMenuContent>
+                        <div className="grid w-80 gap-3 p-4">
+                          {category.items.map((item) => {
+                            const ItemIcon = item.icon
+                            return (
+                              <Link key={item.href} href={item.href} legacyBehavior passHref>
+                                <NavigationMenuLink className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                                  <div className="flex items-center space-x-2">
+                                    <ItemIcon className="h-4 w-4" />
+                                    <div className="text-sm font-medium leading-none">{item.label}</div>
+                                  </div>
+                                  {item.description && (
+                                    <p className="line-clamp-2 text-sm leading-snug text-muted-foreground mt-1">
+                                      {item.description}
+                                    </p>
+                                  )}
+                                </NavigationMenuLink>
+                              </Link>
+                            )
+                          })}
+                        </div>
+                      </NavigationMenuContent>
+                    </NavigationMenuItem>
+                  )
+                })}
+              </NavigationMenuList>
+            </NavigationMenu>
           </nav>
 
           <div className="flex items-center space-x-4">
@@ -230,7 +371,7 @@ export default function Header({ user, onLogout }: HeaderProps) {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/profile" className="flex items-center">
+                  <Link href="/settings" className="flex items-center">
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </Link>
