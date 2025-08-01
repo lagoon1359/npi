@@ -1,1 +1,1 @@
-export default function HomePage() { window.location.href = '/login'; return null; }
+'use client'; import { useRouter } from 'next/navigation'; import { useEffect } from 'react'; export default function HomePage() { const router = useRouter(); useEffect(() => { router.push('/login'); }, [router]); return <div>Redirecting...</div>; }
