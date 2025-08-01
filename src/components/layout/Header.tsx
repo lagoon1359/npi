@@ -21,7 +21,21 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from '@/components/ui/navigation-menu'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 import {
   GraduationCap,
   Users,
@@ -45,7 +59,10 @@ import {
   UserCheck,
   FolderOpen,
   Clipboard,
-  ChevronDown
+  ChevronDown,
+  Menu,
+  X,
+  ChevronRight
 } from 'lucide-react'
 import type { UserRole } from '@/lib/supabase'
 
@@ -91,6 +108,16 @@ interface NavCategory {
 
 export default function Header({ user, onLogout }: HeaderProps) {
   const router = useRouter()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [openCategories, setOpenCategories] = useState<string[]>([])
+
+  const toggleCategory = (categoryLabel: string) => {
+    setOpenCategories(prev =>
+      prev.includes(categoryLabel)
+        ? prev.filter(label => label !== categoryLabel)
+        : [...prev, categoryLabel]
+    )
+  }
 
   const getNavigationCategories = (role: UserRole): NavCategory[] => {
     const dashboardItems: NavItem[] = [
@@ -241,6 +268,11 @@ export default function Header({ user, onLogout }: HeaderProps) {
     router.push('/login')
   }
 
+  const handleMobileNavClick = (href: string) => {
+    setMobileMenuOpen(false)
+    router.push(href)
+  }
+
   if (!user) {
     return (
       <header className="border-b bg-white">
@@ -286,6 +318,7 @@ export default function Header({ user, onLogout }: HeaderProps) {
             </Link>
           </div>
 
+          {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-1">
             <NavigationMenu>
               <NavigationMenuList>
@@ -349,9 +382,131 @@ export default function Header({ user, onLogout }: HeaderProps) {
               {roleDisplayNames[user.role]}
             </Badge>
 
+            {/* Mobile Menu Button */}
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Toggle navigation menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-80 p-0">
+                <SheetHeader className="border-b p-6">
+                  <div className="flex items-center space-x-4">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={user.profile_picture_url} alt={user.full_name} />
+                      <AvatarFallback>
+                        {user.full_name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 text-left">
+                      <SheetTitle className="text-base">{user.full_name}</SheetTitle>
+                      <SheetDescription className="text-sm">{user.email}</SheetDescription>
+                      <Badge variant="secondary" className={`${roleColors[user.role]} mt-1 text-xs`}>
+                        {roleDisplayNames[user.role]}
+                      </Badge>
+                    </div>
+                  </div>
+                </SheetHeader>
+
+                <div className="flex-1 overflow-y-auto py-4">
+                  <nav className="space-y-2 px-4">
+                    {navigationCategories.map((category) => {
+                      const CategoryIcon = category.icon
+                      const isOpen = openCategories.includes(category.label)
+
+                      // If only one item, make it a direct link
+                      if (category.items.length === 1) {
+                        const item = category.items[0]
+                        const ItemIcon = item.icon
+                        return (
+                          <Button
+                            key={category.label}
+                            variant="ghost"
+                            className="w-full justify-start h-auto p-3"
+                            onClick={() => handleMobileNavClick(item.href)}
+                          >
+                            <ItemIcon className="mr-3 h-5 w-5" />
+                            <div className="text-left">
+                              <div className="font-medium">{category.label}</div>
+                              {item.description && (
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  {item.description}
+                                </div>
+                              )}
+                            </div>
+                          </Button>
+                        )
+                      }
+
+                      // Multiple items - create collapsible section
+                      return (
+                        <Collapsible key={category.label} open={isOpen} onOpenChange={() => toggleCategory(category.label)}>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="ghost" className="w-full justify-between h-auto p-3">
+                              <div className="flex items-center">
+                                <CategoryIcon className="mr-3 h-5 w-5" />
+                                <span className="font-medium">{category.label}</span>
+                              </div>
+                              <ChevronRight className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="space-y-1 pl-4 mt-2">
+                            {category.items.map((item) => {
+                              const ItemIcon = item.icon
+                              return (
+                                <Button
+                                  key={item.href}
+                                  variant="ghost"
+                                  className="w-full justify-start h-auto p-3 pl-8"
+                                  onClick={() => handleMobileNavClick(item.href)}
+                                >
+                                  <ItemIcon className="mr-3 h-4 w-4" />
+                                  <div className="text-left">
+                                    <div className="text-sm font-medium">{item.label}</div>
+                                    {item.description && (
+                                      <div className="text-xs text-muted-foreground mt-1">
+                                        {item.description}
+                                      </div>
+                                    )}
+                                  </div>
+                                </Button>
+                              )
+                            })}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )
+                    })}
+                  </nav>
+
+                  <Separator className="my-4" />
+
+                  <div className="px-4 space-y-2">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start p-3"
+                      onClick={() => handleMobileNavClick('/settings')}
+                    >
+                      <Settings className="mr-3 h-4 w-4" />
+                      Settings
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start p-3 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="mr-3 h-4 w-4" />
+                      Log out
+                    </Button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            {/* Desktop User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full hidden md:flex">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={user.profile_picture_url} alt={user.full_name} />
                     <AvatarFallback>
