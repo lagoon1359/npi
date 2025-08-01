@@ -34,12 +34,30 @@ export default function LoginPage() {
     }
   }
 
+  const handleDemoLogin = async (demoEmail: string, demoPassword: string) => {
+    setEmail(demoEmail)
+    setPassword(demoPassword)
+    setLoading(true)
+    setError('')
+
+    const { error } = await signIn(demoEmail, demoPassword)
+
+    if (error) {
+      setError(error)
+      setLoading(false)
+    } else {
+      router.push('/dashboard')
+    }
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex justify-center">
-            <GraduationCap className="h-12 w-12 text-primary" />
+            <div className="bg-blue-600 p-3 rounded-full">
+              <GraduationCap className="h-12 w-12 text-white" />
+            </div>
           </div>
           <h2 className="mt-6 text-3xl font-bold text-gray-900">
             NPI PNG Assessment System
@@ -49,9 +67,9 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Sign in to your account</CardTitle>
+        <Card className="shadow-lg">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl">Sign in to your account</CardTitle>
             <CardDescription>
               Enter your email and password to access the system
             </CardDescription>
@@ -75,6 +93,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
+                  className="w-full"
                 />
               </div>
 
@@ -89,6 +108,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
+                  className="w-full"
                 />
               </div>
 
@@ -96,7 +116,7 @@ export default function LoginPage() {
                 <div className="text-sm">
                   <Link
                     href="/forgot-password"
-                    className="font-medium text-primary hover:text-primary/80"
+                    className="font-medium text-blue-600 hover:text-blue-500"
                   >
                     Forgot your password?
                   </Link>
@@ -105,7 +125,7 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full bg-blue-600 hover:bg-blue-700"
                 disabled={loading}
               >
                 {loading ? (
@@ -131,12 +151,51 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="mt-6 grid grid-cols-1 gap-3">
-                <div className="text-sm text-gray-600 space-y-1">
-                  <p><strong>Admin:</strong> admin@npi.pg / admin123</p>
-                  <p><strong>Instructor:</strong> instructor@npi.pg / instructor123</p>
-                  <p><strong>Student:</strong> student@npi.pg / student123</p>
-                </div>
+              <div className="mt-6 space-y-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => handleDemoLogin('admin@npi.pg', 'admin123')}
+                  disabled={loading}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span>Login as Admin</span>
+                    <span className="text-xs text-gray-500">Full Access</span>
+                  </div>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => handleDemoLogin('instructor@npi.pg', 'instructor123')}
+                  disabled={loading}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span>Login as Instructor</span>
+                    <span className="text-xs text-gray-500">Teaching Access</span>
+                  </div>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => handleDemoLogin('student@npi.pg', 'student123')}
+                  disabled={loading}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span>Login as Student</span>
+                    <span className="text-xs text-gray-500">Student Portal</span>
+                  </div>
+                </Button>
+              </div>
+
+              <div className="mt-4 text-xs text-gray-500 space-y-1">
+                <p><strong>Admin:</strong> admin@npi.pg / admin123</p>
+                <p><strong>Instructor:</strong> instructor@npi.pg / instructor123</p>
+                <p><strong>Student:</strong> student@npi.pg / student123</p>
               </div>
             </div>
           </CardContent>
