@@ -17,73 +17,84 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const { signIn, user } = useAuth()
+  const { signIn, user, loading: authLoading } = useAuth()
   const router = useRouter()
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user) {
+    if (user && !authLoading) {
       router.push('/dashboard')
     }
-  }, [user, router])
+  }, [user, authLoading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    await performLogin(email, password)
+  }
+
+  const handleDemoLogin = async (demoEmail: string, demoPassword: string) => {
+    setEmail(demoEmail)
+    setPassword(demoPassword)
+    await performLogin(demoEmail, demoPassword)
+  }
+
+  const performLogin = async (loginEmail: string, loginPassword: string) => {
     setLoading(true)
     setError('')
     setSuccess('')
 
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      setLoading(false)
+      setError('Login timeout. Please check your internet connection and try again.')
+    }, 15000) // 15 second timeout
+
     try {
-      const { error } = await signIn(email, password)
+      const { error } = await signIn(loginEmail, loginPassword)
+
+      clearTimeout(timeoutId)
 
       if (error) {
-        if (error.includes('Invalid login credentials')) {
-          setError('Invalid email or password. Please check your credentials and try again.')
+        if (error.includes('Invalid login credentials') || error.includes('Invalid email or password')) {
+          if (loginEmail.includes('@npi.pg')) {
+            setError(`Demo account "${loginEmail}" not found. Please create this account in your Supabase Dashboard → Authentication → Users first.`)
+          } else {
+            setError('Invalid email or password. Please check your credentials and try again.')
+          }
         } else if (error.includes('Email not confirmed')) {
           setError('Please check your email and click the confirmation link before signing in.')
+        } else if (error.includes('Too many requests')) {
+          setError('Too many login attempts. Please wait a few minutes before trying again.')
         } else {
           setError(error)
         }
         setLoading(false)
       } else {
         setSuccess('Login successful! Setting up your profile...')
-        // Give a moment for the auth context to update
+
+        // Add another timeout for profile setup
+        const profileTimeoutId = setTimeout(() => {
+          setLoading(false)
+          setError('Profile setup is taking longer than expected. Please refresh the page.')
+        }, 10000) // 10 second timeout for profile setup
+
+        // Wait a moment for auth context to update
         setTimeout(() => {
-          router.push('/dashboard')
-        }, 1000)
+          clearTimeout(profileTimeoutId)
+          if (!user) {
+            // If user is still null after successful auth, something went wrong
+            setLoading(false)
+            setError('Authentication succeeded but profile setup failed. Please try logging in again.')
+          } else {
+            router.push('/dashboard')
+          }
+        }, 2000)
       }
     } catch (err) {
-      setError('An unexpected error occurred. Please try again.')
+      clearTimeout(timeoutId)
+      setError('An unexpected error occurred. Please check your internet connection and try again.')
       setLoading(false)
-    }
-  }
-
-  const handleDemoLogin = async (demoEmail: string, demoPassword: string) => {
-    setEmail(demoEmail)
-    setPassword(demoPassword)
-    setLoading(true)
-    setError('')
-    setSuccess('')
-
-    try {
-      const { error } = await signIn(demoEmail, demoPassword)
-
-      if (error) {
-        if (error.includes('Invalid login credentials')) {
-          setError(`Demo account not found. Please create the account "${demoEmail}" in your Supabase dashboard first.`)
-        } else {
-          setError(error)
-        }
-        setLoading(false)
-      } else {
-        setSuccess('Demo login successful! Setting up your profile...')
-        setTimeout(() => {
-          router.push('/dashboard')
-        }, 1000)
-      }
-    } catch (err) {
-      setError('An unexpected error occurred. Please try again.')
-      setLoading(false)
+      console.error('Login error:', err)
     }
   }
 
@@ -239,16 +250,24 @@ export default function LoginPage() {
                 </Button>
               </div>
 
-              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                <p className="text-xs text-yellow-800 font-medium mb-2">Demo Setup Required:</p>
-                <p className="text-xs text-yellow-700">
-                  Create these accounts in your Supabase Dashboard → Authentication → Users first.
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-xs text-red-800 font-medium mb-2">⚠️ Demo Setup Required:</p>
+                <p className="text-xs text-red-700 mb-2">
+                  The demo accounts must be created in your Supabase Dashboard first.
                 </p>
-                <div className="mt-2 text-xs text-yellow-600 space-y-1">
-                  <p><strong>Admin:</strong> admin@npi.pg / admin123</p>
-                  <p><strong>Instructor:</strong> instructor@npi.pg / instructor123</p>
-                  <p><strong>Student:</strong> student@npi.pg / student123</p>
+                <ol className="text-xs text-red-600 space-y-1 ml-4 list-decimal">
+                  <li>Go to Supabase Dashboard → Authentication → Users</li>
+                  <li>Click "Invite" or "Add user"</li>
+                  <li>Create each account with these credentials:</li>
+                </ol>
+                <div className="mt-2 text-xs text-red-600 space-y-1 ml-4">
+                  <p>• <strong>Admin:</strong> admin@npi.pg / admin123</p>
+                  <p>• <strong>Instructor:</strong> instructor@npi.pg / instructor123</p>
+                  <p>• <strong>Student:</strong> student@npi.pg / student123</p>
                 </div>
+                <p className="text-xs text-red-700 mt-2">
+                  ✅ Make sure to confirm each email address before testing login.
+                </p>
               </div>
             </div>
           </CardContent>
