@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { GraduationCap, Loader2 } from 'lucide-react'
+import { GraduationCap, Loader2, AlertCircle, CheckCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function LoginPage() {
@@ -16,21 +16,45 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const { signIn } = useAuth()
+  const [success, setSuccess] = useState('')
+  const { signIn, user } = useAuth()
   const router = useRouter()
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      router.push('/dashboard')
+    }
+  }, [user, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setSuccess('')
 
-    const { error } = await signIn(email, password)
+    try {
+      const { error } = await signIn(email, password)
 
-    if (error) {
-      setError(error)
+      if (error) {
+        if (error.includes('Invalid login credentials')) {
+          setError('Invalid email or password. Please check your credentials and try again.')
+        } else if (error.includes('Email not confirmed')) {
+          setError('Please check your email and click the confirmation link before signing in.')
+        } else {
+          setError(error)
+        }
+        setLoading(false)
+      } else {
+        setSuccess('Login successful! Setting up your profile...')
+        // Give a moment for the auth context to update
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 1000)
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.')
       setLoading(false)
-    } else {
-      router.push('/dashboard')
     }
   }
 
@@ -39,14 +63,27 @@ export default function LoginPage() {
     setPassword(demoPassword)
     setLoading(true)
     setError('')
+    setSuccess('')
 
-    const { error } = await signIn(demoEmail, demoPassword)
+    try {
+      const { error } = await signIn(demoEmail, demoPassword)
 
-    if (error) {
-      setError(error)
+      if (error) {
+        if (error.includes('Invalid login credentials')) {
+          setError(`Demo account not found. Please create the account "${demoEmail}" in your Supabase dashboard first.`)
+        } else {
+          setError(error)
+        }
+        setLoading(false)
+      } else {
+        setSuccess('Demo login successful! Setting up your profile...')
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 1000)
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.')
       setLoading(false)
-    } else {
-      router.push('/dashboard')
     }
   }
 
@@ -78,7 +115,15 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
                 <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {success && (
+                <Alert className="border-green-200 bg-green-50">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-700">{success}</AlertDescription>
                 </Alert>
               )}
 
@@ -94,6 +139,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
                   className="w-full"
+                  disabled={loading}
                 />
               </div>
 
@@ -109,6 +155,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   className="w-full"
+                  disabled={loading}
                 />
               </div>
 
@@ -192,10 +239,16 @@ export default function LoginPage() {
                 </Button>
               </div>
 
-              <div className="mt-4 text-xs text-gray-500 space-y-1">
-                <p><strong>Admin:</strong> admin@npi.pg / admin123</p>
-                <p><strong>Instructor:</strong> instructor@npi.pg / instructor123</p>
-                <p><strong>Student:</strong> student@npi.pg / student123</p>
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                <p className="text-xs text-yellow-800 font-medium mb-2">Demo Setup Required:</p>
+                <p className="text-xs text-yellow-700">
+                  Create these accounts in your Supabase Dashboard → Authentication → Users first.
+                </p>
+                <div className="mt-2 text-xs text-yellow-600 space-y-1">
+                  <p><strong>Admin:</strong> admin@npi.pg / admin123</p>
+                  <p><strong>Instructor:</strong> instructor@npi.pg / instructor123</p>
+                  <p><strong>Student:</strong> student@npi.pg / student123</p>
+                </div>
               </div>
             </div>
           </CardContent>

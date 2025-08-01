@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSupabaseUser(initialSession?.user ?? null)
 
         if (initialSession?.user) {
-          await fetchUserProfile(initialSession.user.id)
+          await fetchUserProfile(initialSession.user.id, initialSession.user.email || '')
         }
       } catch (error) {
         console.error('Error getting initial session:', error)
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSupabaseUser(session?.user ?? null)
 
         if (session?.user) {
-          await fetchUserProfile(session.user.id)
+          await fetchUserProfile(session.user.id, session.user.email || '')
         } else {
           setUser(null)
         }
@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = async (userId: string, email: string) => {
     try {
       const { data, error } = await supabase
         .from('users')
@@ -70,13 +70,78 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single()
 
       if (error) {
-        console.error('Error fetching user profile:', error)
+        console.warn('User profile not found, creating basic profile:', error.message)
+        // Create a basic user profile if it doesn't exist
+        await createBasicUserProfile(userId, email)
         return
       }
 
       setUser(data)
     } catch (error) {
       console.error('Error in fetchUserProfile:', error)
+      // Create fallback user for demo purposes
+      await createBasicUserProfile(userId, email)
+    }
+  }
+
+  const createBasicUserProfile = async (userId: string, email: string) => {
+    try {
+      // Determine role based on email for demo accounts
+      let role: UserRole = 'student'
+      let fullName = 'Demo User'
+
+      if (email === 'admin@npi.pg') {
+        role = 'admin'
+        fullName = 'System Administrator'
+      } else if (email === 'instructor@npi.pg') {
+        role = 'instructor'
+        fullName = 'Dr. John Instructor'
+      } else if (email === 'student@npi.pg') {
+        role = 'student'
+        fullName = 'Mary Student'
+      }
+
+      const { data, error } = await supabase
+        .from('users')
+        .insert({
+          id: userId,
+          email: email,
+          full_name: fullName,
+          role: role,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.warn('Could not create user profile, using fallback:', error.message)
+        // Use fallback user object
+        setUser({
+          id: userId,
+          email: email,
+          full_name: fullName,
+          role: role,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+      } else {
+        setUser(data)
+      }
+    } catch (error) {
+      console.error('Error creating basic user profile:', error)
+      // Use fallback user object even if database operation fails
+      setUser({
+        id: userId,
+        email: email,
+        full_name: 'Demo User',
+        role: 'student',
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
     }
   }
 
