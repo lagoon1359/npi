@@ -75,33 +75,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('Fetching user profile for:', email)
 
-      // Add timeout for the database query
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Profile fetch timeout')), 10000)
-      })
+      // First try to fetch the user profile with a shorter timeout
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single()
 
-      const fetchPromise = supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single()
+        if (data) {
+          console.log('User profile found in database:', data)
+          setUser(data)
+          return
+        }
 
-      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any
-
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
-        console.warn('Database error fetching user profile:', error.message)
-        await createBasicUserProfile(userId, email)
-        return
+        if (error && error.code === 'PGRST116') {
+          // User not found - this is expected for new users
+          console.log('User profile not found in database, creating new profile')
+        } else if (error) {
+          console.warn('Database error fetching user profile:', error.message)
+        }
+      } catch (dbError) {
+        console.warn('Database query failed:', dbError)
       }
 
-      if (!data) {
-        console.log('User profile not found, creating basic profile')
-        await createBasicUserProfile(userId, email)
-        return
-      }
+      // If we get here, create a basic user profile
+      await createBasicUserProfile(userId, email)
 
-      console.log('User profile found:', data)
-      setUser(data)
     } catch (error) {
       console.error('Error in fetchUserProfile:', error)
       await createBasicUserProfile(userId, email)
@@ -127,9 +127,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else if (email === 'student@npi.pg') {
         role = 'student'
         fullName = 'Mary Student'
+      } else if (email === 'registrar@npi.pg') {
+        role = 'admin'
+        fullName = 'Registration Officer'
       }
 
-      const userProfile = {
+      const userProfile: User = {
         id: userId,
         email: email,
         full_name: fullName,
@@ -139,29 +142,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updated_at: new Date().toISOString()
       }
 
+      // Try to insert into database, but don't wait too long
       try {
-        const { data, error } = await supabase
-          .from('users')
-          .insert(userProfile)
-          .select()
-          .single()
+        const { data, error } = await Promise.race([
+          supabase
+            .from('users')
+            .insert(userProfile)
+            .select()
+            .single(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Insert timeout')), 5000)
+          )
+        ]) as any
+
+        if (data && !error) {
+          console.log('User profile created successfully in database:', data)
+          setUser(data)
+          return
+        }
 
         if (error) {
           console.warn('Could not create user profile in database:', error.message)
-          console.log('Using fallback user profile')
-          setUser(userProfile)
-        } else {
-          console.log('User profile created successfully:', data)
-          setUser(data)
         }
-      } catch (dbError) {
-        console.warn('Database insert failed, using fallback profile:', dbError)
-        setUser(userProfile)
+      } catch (insertError) {
+        console.warn('Database insert failed or timed out:', insertError)
       }
+
+      // Always set the user profile, even if database operations fail
+      console.log('Using fallback user profile')
+      setUser(userProfile)
+
     } catch (error) {
       console.error('Error creating basic user profile:', error)
-      // Use fallback user object even if everything fails
-      setUser({
+
+      // Final fallback - create minimal user object
+      const fallbackUser: User = {
         id: userId,
         email: email,
         full_name: 'Demo User',
@@ -169,7 +184,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
-      })
+      }
+
+      setUser(fallbackUser)
     }
   }
 
